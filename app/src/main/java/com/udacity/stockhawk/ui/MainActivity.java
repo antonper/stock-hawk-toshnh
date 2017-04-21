@@ -1,9 +1,12 @@
 package com.udacity.stockhawk.ui;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
@@ -23,6 +26,7 @@ import com.udacity.stockhawk.R;
 import com.udacity.stockhawk.data.Contract;
 import com.udacity.stockhawk.data.PrefUtils;
 import com.udacity.stockhawk.sync.QuoteSyncJob;
+import com.udacity.stockhawk.utils.NetworkUtils;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -30,6 +34,7 @@ import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>,
         SwipeRefreshLayout.OnRefreshListener,
+        SharedPreferences.OnSharedPreferenceChangeListener,
         StockAdapter.StockAdapterOnClickHandler {
 
     private static final int STOCK_LOADER = 0;
@@ -47,6 +52,10 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     @Override
     public void onClick(String symbol) {
         Timber.d("Symbol clicked: %s", symbol);
+        Uri stockUri = Contract.Quote.makeUriForStock(symbol);
+        Intent intent = new Intent(this, ChartActivity.class);
+        intent.setData(stockUri);
+        startActivity(intent);
     }
 
     @Override
@@ -63,6 +72,8 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         swipeRefreshLayout.setOnRefreshListener(this);
         swipeRefreshLayout.setRefreshing(true);
         onRefresh();
+
+        System.setProperty("yahoofinance.baseurl.histquotes", "https://ichart.yahoo.com/table.csv");
 
         QuoteSyncJob.initialize(this);
         getSupportLoaderManager().initLoader(STOCK_LOADER, null, this);
@@ -186,4 +197,45 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         }
         return super.onOptionsItemSelected(item);
     }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (key.equals(getString(R.string.pref_stock_status_key))) {
+            updateEmptyView();
+        }
+    }
+
+    private void updateEmptyView() {
+        swipeRefreshLayout.setVisibility(View.GONE);
+        int message;
+
+        if (adapter.getItemCount() == 0) {
+            int status = PrefUtils.getStockStatus(this);
+            switch (status) {
+                case QuoteSyncJob.STOCK_STATUS_EMPTY:
+                    message = R.string.error_no_stocks;
+                    break;
+                case QuoteSyncJob.STOCK_STATUS_SERVER_DOWN:
+                    message = R.string.error_server_down;
+                    break;
+                case QuoteSyncJob.STOCK_STATUS_SERVER_INVALID:
+                    message = R.string.error_server_invalid;
+                    break;
+                case QuoteSyncJob.STOCK_STATUS_UNKNOWN:
+                    message = R.string.empty_stock_list;
+                    break;
+                default:
+                    message = R.string.loading_data;
+                    break;
+            }
+            if (!NetworkUtils.isNetworkUp(this)) message = R.string.error_no_network;
+            if (PrefUtils.getStocks(this).size() == 0) message = R.string.error_no_stocks;
+            error.setText(message);
+            error.setVisibility(View.VISIBLE);
+        } else {
+            swipeRefreshLayout.setRefreshing(false);
+            swipeRefreshLayout.setVisibility(View.VISIBLE);
+        }
+    }
+
 }
