@@ -61,9 +61,6 @@ public class ChartActivity extends AppCompatActivity  implements LoaderManager.L
     }
 
     public String plot(String symbol) {
-//        String history = getHistory(symbol);
-
-
         List<String[]> lines = getLines(history);
 
         List<Entry> entries = new ArrayList<>();
@@ -80,9 +77,7 @@ public class ChartActivity extends AppCompatActivity  implements LoaderManager.L
         }
 
 
-//        chart.setBackgroundColor(Color.BLACK);
         LineDataSet  lineDataSet = new LineDataSet(entries, symbol);
-//        lineDataSet.setAxisDependency(YAxis.AxisDependency.LEFT);
         lineDataSet.setColor(ContextCompat.getColor(this,R.color.chart_line));
         lineDataSet.setLineWidth(2f);
         lineDataSet.setDrawCircles(false);
@@ -98,7 +93,6 @@ public class ChartActivity extends AppCompatActivity  implements LoaderManager.L
         chart.setData(lineData);
         chart.getLegend().setEnabled(false);
         XAxis xAxis =  chart.getXAxis();
-//        xAxis.setDrawGridLines(false);
         xAxis.setAxisLineColor(Color.WHITE);
         xAxis.setAxisLineWidth(1.5f);
         xAxis.setTextColor(Color.WHITE);
@@ -141,16 +135,6 @@ public class ChartActivity extends AppCompatActivity  implements LoaderManager.L
         return lines;
     }
 
-    private String getHistory(String symbol) {
-        Cursor cursor = getContentResolver().query(Contract.Quote.makeUriForStock(symbol), null, null, null, null);
-        String history = null;
-        if(cursor != null){
-            cursor.moveToFirst();
-            history = cursor.getString(cursor.getColumnIndex(Contract.Quote.COLUMN_HISTORY));
-            cursor.close();
-        }
-        return history;
-    }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
